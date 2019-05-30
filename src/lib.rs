@@ -42,12 +42,9 @@ pub fn get_laplace_error(x:f32)-> f32 {
     }
     if x>=2.0{
         let x = x - 2.0;
-        println!("x {}",x);
         let mut y: u32 = (x * 100.0).round() as u32;
-        println!("y1 {}",y);
         if y%2!=0{
             y = y + 1;
-            println!("y2 {}",y);
         }
         return *LAPLACE_VAL.1.get((y/2) as usize).unwrap() * a
     }
