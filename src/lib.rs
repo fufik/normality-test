@@ -59,25 +59,7 @@ pub fn get_laplace_error(x:f32)-> f32 {
 pub mod dstrb_thr_freq{
     use std::ops::Div;
     use crate::*;
-    pub fn normal(gen_sample: Vec<u32>,emp_freq: Vec<u32>) -> Vec<f32>{
-        //1.1Dividing into the intervals
-        let mut m: Vec<u32> = Vec::new();
-        let min = *gen_sample.iter().min().unwrap();
-        let max = *gen_sample.iter().max().unwrap();
-        let ran: Vec<u32> = (min..=max).collect();
-        let ssize = (gen_sample.len()/emp_freq.len()) as usize;
-        for i in (&ran).iter().step_by(ssize){
-            m.push(*i);
-        }
-        if m.len() < emp_freq.len()+1{
-            m.push(*ran.last().unwrap());
-        }
-        let mut mt: Vec<(u32,u32)> = Vec::new();
-        let mut i = 1;
-        while i < m.len(){
-            mt.push((m[i-1],m[i]));
-            i = i + 1;
-        }
+    pub fn normal(gen_sample: Vec<u32>,emp_freq: &Vec<u32>,mt: Vec<(u32,u32)>) -> Vec<f32>{
         //1.2Finding centres
         let mut m_cen : Vec<f32> = Vec::new();
         for i in mt.iter(){
@@ -107,20 +89,54 @@ pub mod dstrb_thr_freq{
             }
         a.push(get_laplace_error((mt[i].1 as f32 - mean_m_cen)/st_dev) - get_laplace_error((mt[i].0 as f32 - mean_m_cen)/st_dev));
         }
+        a = a.into_iter().map(|f| f*gen_sample.len() as f32).collect();
         return a;
+    }
+}
+pub fn belongs(a:u32,(x,y):(u32,u32)) -> bool{
+    if a > x && a < y{        
+        return true        
+    }
+    else{
+        return false        
     }
 }
 
 pub mod prove{       
-    pub fn pearson_chi2_normal(gen_sample: Vec<u32>,alpha: f32){
+    use crate::dstrb_thr_freq::normal;
+    use crate::get_chi2_crit;
+    use std::ops::Sub;
+    pub fn pearson_chi2_normal(mut gen_sample: Vec<u32>,alpha: f32,n_interv: usize) -> bool{
+        //Sorting
+        gen_sample.sort_unstable();
+        //Dividing into the intervals
+        let mut m: Vec<u32> = Vec::new();
+        let ran: Vec<u32> = {
+            let min = *gen_sample.first().unwrap();
+            let max = *gen_sample.last().unwrap();
+            (min..=max).collect()
+        };
+        let ssize: usize = gen_sample.len()/n_interv;
+        for i in (&ran).iter().step_by(ssize){
+            m.push(*i);
+        }
+        let mut mt: Vec<(u32,u32)> = Vec::new();
+        let mut i = 1;
+        while i < m.len(){
+            mt.push((m[i-1],m[i]));
+            i = i + 1;
+        }
+        
         //Evaulating empirical frequencies
         let efreqs = {
-            let mut a: Vec<u32> = vec![0;5];
-            for i in gen_sample.into_iter(){
-                if (a.len() - 1) < i as usize{
-                    a.push(0);
+            let mut a: Vec<u32> = vec![0;mt.len()];
+            for i in gen_sample.iter(){
+                for (j,_) in mt.iter().enumerate(){
+                    if crate::belongs(*i,mt[j])
+                    {
+                        a[j] = a[j] + 1;
+                    }
                 }
-                a[i as usize] = a[i as usize] + 1;
             }
             a
         };
@@ -128,8 +144,20 @@ pub mod prove{
         //df=s-1-r
         //Normal Distribution has two degrees of freedom, hence r=2
         //s is amount of intervals
-        let df = efreqs.len()-1-2;
-            
+        let df: usize = efreqs.len()-1-2;
+        let tfreqs = normal(gen_sample,&efreqs,mt);
+        let chi2 = efreqs.iter()
+                         .zip(tfreqs.iter())
+                         .map(|f| ((f.0*f.0) as f32)/f.1)
+                         .sum::<f32>()
+                         .sub(efreqs.len() as f32);
+        let tchi2 = get_chi2_crit(alpha,df).unwrap();
+        if chi2 < tchi2 {
+            return true
+        }
+        else{
+            return false
+        }
     }
 }
 
