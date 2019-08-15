@@ -118,8 +118,62 @@ pub fn belongs(a:u32,(x,y):(u32,u32)) -> bool{
     }
 }
 
+pub fn subintervals(gen_sample: &Vec<u32>,parts_o: usize) -> Vec<(u32,u32)>{
+
+    //Sorting
+    //gen_sample.sort_unstable();
+    //Dividing into the intervals
+    let mut m: Vec<u32> = Vec::new();
+    let ran: Vec<u32> = {
+        let min = *gen_sample.first().unwrap();
+        let max = *gen_sample.last().unwrap();
+        (min..=max).collect()
+    };
+    let mut parts = parts_o;
+    let mut ididi = false;             
+    let mut parts_a = parts.clone();
+    let mut parts_b = parts.clone();
+    let las = *ran.last().unwrap();   
+    if (ran.len()%parts) > (ran.len()/parts){
+        while ididi == false{            
+            parts_a = parts_a - 1;
+            parts_b = parts_b + 1;
+            if (ran.len()%parts_b) < (ran.len()/parts_b){
+             parts = parts_b;
+             ididi = true;          
+            }                                       
+            if (ran.len()%parts_a) < (ran.len()/parts_a){
+                parts = parts_a;
+                ididi = true;
+            }                                       
+        }                                                                     
+    }    
+
+    let chsize = ran.len()/parts;
+    //let mut ssize: usize = (ran.len() as f32/n_interv as f32).floor() as usize;
+    println!("chsize {}",chsize);
+    for i in (&ran).iter().step_by(chsize){
+        m.push(*i);
+    }
+    if *m.iter().last().unwrap()!=las{
+        m.pop();
+        m.push(las);
+    }
+
+    println!("m: {:#?}",m);
+    let mut mt: Vec<(u32,u32)> = Vec::new();
+        let mut i = 1;
+        while i < m.len(){
+            mt.push((m[i-1],m[i]));
+            i = i + 1;
+        }
+    println!("mt: {:#?}",mt);
+    mt
+
+}
 pub mod prove{       
     use crate::dstrb_thr_freq::normal;
+    use crate::subintervals;
     use crate::get_chi2_crit;
     use std::ops::Sub;
     pub fn pearson_chi2_normal(mut gen_sample: Vec<u32>,alpha: f32,n_interv: usize) -> Result<bool,&'static str>{
@@ -130,18 +184,18 @@ pub mod prove{
         //Sorting
         gen_sample.sort_unstable();
         //Dividing into the intervals
-        let mut m: Vec<u32> = Vec::new();
-        let ran: Vec<u32> = {
-            let min = *gen_sample.first().unwrap();
-            let max = *gen_sample.last().unwrap();
-            (min..=max).collect()
-        };
-        let mut ssize: usize = (ran.len() as f32/n_interv as f32).floor() as usize;
-        println!("ssize {}",ssize);
-        for i in (&ran).iter().step_by(ssize){
-            m.push(*i);
-        }
-        println!("m: {:#?}",m);
+        //let mut m: Vec<u32> = Vec::new();
+        //let ran: Vec<u32> = {
+        //    let min = *gen_sample.first().unwrap();
+        //    let max = *gen_sample.last().unwrap();
+        //    (min..=max).collect()
+        //};
+        //let mut ssize: usize = (ran.len() as f32/n_interv as f32).floor() as usize;
+        //println!("ssize {}",ssize);
+        //for i in (&ran).iter().step_by(ssize){
+        //    m.push(*i);
+        //}
+        //println!("m: {:#?}",m);
         //if m.iter().last().unwrap() != ran.iter().last().unwrap(){
         //    if (m.len() >= n_interv + 1){
         //        m.pop();
@@ -151,13 +205,14 @@ pub mod prove{
         //        m.push(*ran.iter().last().unwrap());
         //    }
         //}
-        let mut mt: Vec<(u32,u32)> = Vec::new();
-        let mut i = 1;
-        while i < m.len(){
-            mt.push((m[i-1],m[i]));
-            i = i + 1;
-        }
-        
+        //let mut mt: Vec<(u32,u32)> = Vec::new();
+        //let mut i = 1;
+        //while i < m.len(){
+        //    mt.push((m[i-1],m[i]));
+        //    i = i + 1;
+        //}
+
+        let mt = subintervals(&gen_sample,n_interv);
         //Evaulating empirical frequencies
         let efreqs = {
             let mut a: Vec<u32> = vec![0;mt.len()];
